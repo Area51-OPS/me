@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Entry/Exit Tracker</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --bg-dark: #3c3c3c;
+            --panel: rgba(0, 30, 60, 0.9);
+            --accent: #0b66d1;
+            --accent-hover: #0e7ff3;
+            --button-dark: #2f2f2f;
+            --text-on-dark: #ffffff;
+        }
+        body { font-family: Arial, sans-serif; padding: 20px; background-color: var(--bg-dark); color: var(--text-on-dark); margin: 0; }
+        .blue-screen { background-color: var(--panel); padding: 30px; border-radius: 8px; margin-bottom: 16px; display: none; }
+        /* Show first screen by default */
+        #screen1 { display: block; }
+        .button-group { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px; }
+        button { flex: 1 1 30%; padding: 12px; font-size: 16px; border: none; border-radius: 6px; background-color: var(--accent); color: white; font-weight: 700; cursor: pointer; }
+        button:hover { background-color: var(--accent-hover); }
+        button:disabled { background-color: #666; cursor: not-allowed; }
+        .secondary { background-color: var(--button-dark); }
+        .full-width { flex: 1 1 100%; }
+        input { margin: 10px 0; padding: 10px; font-size: 16px; width: 100%; box-sizing: border-box; }
+        #logsTableContainer { background: white; color: black; padding: 10px; border-radius: 6px; max-height: 400px; overflow-y: auto; margin-top: 15px; }
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+    </style>
+</head>
+<body>
+
+<div id="screen1" class="blue-screen">
+    <h2>Select Category</h2>
+    <div class="button-group">
+        <button onclick="selectCategory('Student')">Student</button>
+        <button onclick="selectCategory('Staff')">Staff</button>
+        <button onclick="selectCategory('Management')">Management</button>
+    </div>
+</div>
+
+<div id="screen1_5" class="blue-screen">
+    <h2>Select Staff Type</h2>
+    <div class="button-group">
+        <button onclick="selectStaffType('Teaching')">Teaching</button>
+        <button onclick="selectStaffType('Non-Teaching')">Non-Teaching</button>
+        <button class="secondary" onclick="showScreen('screen1')">Back</button>
+    </div>
+</div>
+
+<div id="screen2" class="blue-screen">
+    <h2>Select Movement</h2>
+    <div class="button-group">
+        <button onclick="selectMovement('Arrival')">Arrival</button>
+        <button onclick="selectMovement('Departure')">Departure</button>
+        <button class="secondary" onclick="showScreen('screen1')">Back</button>
+        <button id="logsControlBtn" class="full-width secondary" onclick="showScreen('screenLogsControl')">View / Export Logs</button>
+    </div>
+</div>
+
+<div id="screen3" class="blue-screen">
+    <h2 id="screen3-title">Log Entry</h2>
+    <input id="nameInput" placeholder="Enter Name" oninput="validateForm()">
+    <input id="classInput" placeholder="Enter Class / Department">
+    <div id="timeOutput" style="margin: 10px 0; font-weight: bold;"></div>
+    <div class="button-group">
+        <button id="logEntryBtn" onclick="logEntry()" disabled>Submit Log</button>
+        <button class="secondary" onclick="showScreen('screen2')">Back</button>
+    </div>
+</div>
+
+<div id="screenLogsControl" class="blue-screen">
+    <h2>Log Controls</h2>
+    <input type="password" id="logPasswordInput" placeholder="Enter Password">
+    <div class="button-group">
+        <button onclick="checkAccess()">Access Logs</button>
+        <button id="viewLogsBtn" class="secondary" onclick="viewLogs()" disabled>View List</button>
+        <button id="exportBtn" class="secondary" onclick="exportToExcel()" disabled>Export Excel</button>
+        <button onclick="changePassword()" class="full-width">Set/Change Password</button>
+        <button class="secondary full-width" onclick="showScreen('screen2')">Back</button>
+    </div>
+</div>
+
+<div id="screenLogs" class="blue-screen">
+    <h2>Daily Logs</h2>
+    <div id="logsTableContainer"></div>
+    <div class="button-group">
+        <button class="full-width" onclick="showScreen('screenLogsControl')">Back</button>
+    </div>
+</div>
+
+<script>
+    // Variables & Constants
+    let currentCategory = '';
+    let currentMovement = '';
+    let dataEntries = JSON.parse(localStorage.getItem('movementData') || '[]');
+
+    // --- Navigation ---
+    function showScreen(screenId) {
+        document.querySelectorAll('.blue-screen').forEach(s => s.style.display = 'none');
+        document.getElementById(screenId).style.display = 'block';
+    }
+
+    function selectCategory(cat) {
+        currentCategory = cat;
+        if (cat === 'Staff') showScreen('screen1_5');
+        else showScreen('screen2');
+    }
+
+    function selectStaffType(type) {
+        currentCategory = `Staff (${type})`;
+        showScreen('screen2');
+    }
+
+    function selectMovement(mov) {
+        currentMovement = mov;
+        document.getElementById('screen3-title').innerText = mov + " - " + currentCategory;
+        document.getElementById('timeOutput').innerText = new Date().toLocaleString();
+        showScreen('screen3');
+    }
+
+    // --- Logic ---
+    function validateForm() {
+        const name = document.getElementById('nameInput').value.trim();
+        document.getElementById('logEntryBtn').disabled = name.length < 2;
+    }
+
+    function logEntry() {
+        const entry = {
+            ID: Date.now(), // Unique ID based on timestamp
+            Name: document.getElementById('nameInput').value,
+            Category: currentCategory,
+            Movement: currentMovement,
+            Info: document.getElementById('classInput').value,
+            Time: new Date().toLocaleString()
+        };
+
+        dataEntries.push(entry);
+        localStorage.setItem('movementData', JSON.stringify(dataEntries));
+        
+        alert("Success: Logged!");
+        document.getElementById('nameInput').value = '';
+        document.getElementById('classInput').value = '';
+        showScreen('screen1');
+    }
+
+    // --- Admin & Security ---
+    function checkAccess() {
+        const pass = document.getElementById('logPasswordInput').value;
+        const stored = localStorage.getItem('logPassword') || "1234"; // Default pass
+        
+        if (pass === stored) {
+            document.getElementById('viewLogsBtn').disabled = false;
+            document.getElementById('exportBtn').disabled = false;
+            alert("Access Granted");
+        } else {
+            alert("Incorrect Password");
+        }
+    }
+
+    function changePassword() {
+        const newPass = prompt("Enter new password (min 4 characters):");
+        if (newPass && newPass.length >= 4) {
+            localStorage.setItem('logPassword', newPass);
+            alert("Password updated.");
+        }
+    }
+
+    function viewLogs() {
+        const container = document.getElementById('logsTableContainer');
+        if (dataEntries.length === 0) {
+            container.innerHTML = "<p>No logs found for today.</p>";
+        } else {
+            let html = '<table><tr><th>Name</th><th>Cat</th><th>Move</th><th>Time</th></tr>';
+            dataEntries.forEach(e => {
+                html += `<tr><td>${e.Name}</td><td>${e.Category}</td><td>${e.Movement}</td><td>${e.Time}</td></tr>`;
+            });
+            html += '</table>';
+            container.innerHTML = html;
+        }
+        showScreen('screenLogs');
+    }
+
+    function exportToExcel() {
+        const ws = XLSX.utils.json_to_sheet(dataEntries);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Logs");
+        XLSX.writeFile(wb, "Tracker_Logs.xlsx");
+    }
+</script>
+
+</body>
+</html>
