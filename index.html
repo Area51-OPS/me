@@ -16,7 +16,6 @@
         }
         body { font-family: Arial, sans-serif; padding: 20px; background-color: var(--bg-dark); color: var(--text-on-dark); margin: 0; }
         .blue-screen { background-color: var(--panel); padding: 30px; border-radius: 8px; margin-bottom: 16px; display: none; }
-        /* Show first screen by default */
         #screen1 { display: block; }
         .button-group { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px; }
         button { flex: 1 1 30%; padding: 12px; font-size: 16px; border: none; border-radius: 6px; background-color: var(--accent); color: white; font-weight: 700; cursor: pointer; }
@@ -56,7 +55,7 @@
         <button onclick="selectMovement('Arrival')">Arrival</button>
         <button onclick="selectMovement('Departure')">Departure</button>
         <button class="secondary" onclick="showScreen('screen1')">Back</button>
-        <button id="logsControlBtn" class="full-width secondary" onclick="showScreen('screenLogsControl')">View / Export Logs</button>
+        <button id="logsControlBtn" class="full-width secondary" onclick="showScreen('screenLogsControl')" style="display:none;">View / Export Logs</button>
     </div>
 </div>
 
@@ -92,12 +91,10 @@
 </div>
 
 <script>
-    // Variables & Constants
     let currentCategory = '';
     let currentMovement = '';
     let dataEntries = JSON.parse(localStorage.getItem('movementData') || '[]');
 
-    // --- Navigation ---
     function showScreen(screenId) {
         document.querySelectorAll('.blue-screen').forEach(s => s.style.display = 'none');
         document.getElementById(screenId).style.display = 'block';
@@ -105,6 +102,16 @@
 
     function selectCategory(cat) {
         currentCategory = cat;
+        
+        // --- LOGIC CHANGE START ---
+        const logBtn = document.getElementById('logsControlBtn');
+        if (cat === 'Management') {
+            logBtn.style.display = 'block'; // Show if Management
+        } else {
+            logBtn.style.display = 'none'; // Hide for everyone else
+        }
+        // --- LOGIC CHANGE END ---
+
         if (cat === 'Staff') showScreen('screen1_5');
         else showScreen('screen2');
     }
@@ -121,7 +128,6 @@
         showScreen('screen3');
     }
 
-    // --- Logic ---
     function validateForm() {
         const name = document.getElementById('nameInput').value.trim();
         document.getElementById('logEntryBtn').disabled = name.length < 2;
@@ -129,7 +135,7 @@
 
     function logEntry() {
         const entry = {
-            ID: Date.now(), // Unique ID based on timestamp
+            ID: Date.now(),
             Name: document.getElementById('nameInput').value,
             Category: currentCategory,
             Movement: currentMovement,
@@ -146,10 +152,9 @@
         showScreen('screen1');
     }
 
-    // --- Admin & Security ---
     function checkAccess() {
         const pass = document.getElementById('logPasswordInput').value;
-        const stored = localStorage.getItem('logPassword') || "1234"; // Default pass
+        const stored = localStorage.getItem('logPassword') || "1234"; 
         
         if (pass === stored) {
             document.getElementById('viewLogsBtn').disabled = false;
@@ -171,7 +176,7 @@
     function viewLogs() {
         const container = document.getElementById('logsTableContainer');
         if (dataEntries.length === 0) {
-            container.innerHTML = "<p>No logs found for today.</p>";
+            container.innerHTML = "<p>No logs found.</p>";
         } else {
             let html = '<table><tr><th>Name</th><th>Cat</th><th>Move</th><th>Time</th></tr>';
             dataEntries.forEach(e => {
